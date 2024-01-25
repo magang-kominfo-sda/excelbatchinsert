@@ -5,7 +5,6 @@ from psycopg2.extras import execute_batch
 
 total_data_all_excel = 0
 total_data_all_insert = 0
-total_data_all_exist = 0
 
 # Koneksi ke database PostgreSQL
 with psycopg2.connect(
@@ -19,24 +18,25 @@ with psycopg2.connect(
         direktori_excel = 'Perbulan'
 
         for filename in os.listdir(direktori_excel):
+
             if filename.endswith('.xlsx') or filename.endswith('.xls'):
                 file_path = os.path.join(direktori_excel, filename)
                 print(file_path)
 
                 xl = pd.ExcelFile(file_path)
                 sheet_names = xl.sheet_names
-
                 for sheet_name in sheet_names:
+
                     df_excel = pd.read_excel(file_path, sheet_name=sheet_name)
                     print(sheet_name)
+
                     df_excel.columns = df_excel.columns.str.replace('.', '_')
                     df_excel = df_excel.map(lambda x: x.strip("'") if isinstance(x, str) else x)
                     if df_excel.iloc[:, 1].isnull().any():
                         df_excel.iloc[:, 1] = df_excel.iloc[:, 1].fillna('-')
 
-                    table_name = sheet_name.lower().replace(' ','')  # Ganti dengan nama tabel yang sesuai
+                    table_name = sheet_name.lower().replace(' ','')
 
-                    # Mendapatkan struktur kolom dari tabel
                     cursor.execute(f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name}';")
                     columns = cursor.fetchall()
                     column_mapping = {column[0]: column[1] for column in columns}
@@ -63,7 +63,6 @@ with psycopg2.connect(
                         data_row = tuple(None if pd.isnull(value) else value for value in row)
                         data.append(data_row)
 
-
                     column_types = df_excel.dtypes
                     string_columns = df_excel.select_dtypes(include=['object']).columns
                     if 'NO' in df_excel.columns:
@@ -78,7 +77,6 @@ with psycopg2.connect(
 
                     kolom_periksa = kolom_tidak_null[0]
 
-                    # Memeriksa data yang sudah ada dalam tabel
                     existing_data = set()
                     select_sql = f"SELECT * FROM {table_name};"
                     cursor.execute(select_sql)
@@ -115,7 +113,6 @@ with psycopg2.connect(
                         kolom + "_x" if kolom != kolom_periksa and kolom in string_columns else kolom
                         for kolom in df_excel.columns
                     ]
-                    # kolom_lama = [kolom + "_x" if i != 1 and kolom not in timestamp_columns else kolom for i, kolom in enumerate(df.columns)]
                     df_hasil = df_hasil[kolom_lama]
 
                     data3 = set()
@@ -140,22 +137,20 @@ with psycopg2.connect(
 
                     total_now_data = len(df_excel)
                     total_now_insert_data = len(data4)
-                    total_now_exist_data = len(existing_data)
                     total_data_all_excel += total_now_data
                     total_data_all_insert += total_now_insert_data
-                    total_data_all_exist += total_now_exist_data
 
                     try:
                         # Menjalankan SQL untuk insert data baru dalam batch
                         execute_batch(cursor, insert_data_sql, data4, page_size=1000)
                         # Commitperubahan
                         conn.commit()
-                        print(str(total_now_insert_data) + " Data berhasil diinsert. Total data di excel : " + str(total_now_data) + ", Data di database sekarang : " + str(total_data_all_exist))
+                        print(str(total_now_insert_data) + " Data berhasil diinsert. Total data di excel : " + str(total_now_data))
                         
                     except (Exception, psycopg2.Error) as error:
                         print("Error saat menginsert data:", error)
-            
-                    
+
+
 print("total semua data di excel : "+str(total_data_all_excel))
 print("total semua data di insert : "+str(total_data_all_insert))
 
