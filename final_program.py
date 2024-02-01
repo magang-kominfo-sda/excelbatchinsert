@@ -32,8 +32,7 @@ with psycopg2.connect(
 
                     df_excel.columns = df_excel.columns.str.replace('.', '_')
                     df_excel = df_excel.map(lambda x: x.strip("'") if isinstance(x, str) else x)
-                    if df_excel.iloc[:, 1].isnull().any():
-                        df_excel.iloc[:, 1] = df_excel.iloc[:, 1].fillna('-')
+                    df_excel = df_excel.map(lambda x: '-' if pd.isnull(x) else x)
 
                     table_name = sheet_name.lower().replace(' ','')
 
@@ -47,10 +46,7 @@ with psycopg2.connect(
                     for column_name, data_type in column_mapping.items():
                         upper_column_name = column_name.upper().replace('_', ' ')
                         if upper_column_name in df_excel.columns:
-                            if data_type == 'timestamp without time zone':
-                                df_excel[upper_column_name] = pd.to_datetime(df_excel[upper_column_name], errors='coerce')
-                                df_excel[upper_column_name] = df_excel[upper_column_name].apply(lambda x: x if pd.notna(x) else None)
-                            elif data_type == 'bigint':
+                            if data_type == 'bigint':
                                 df_excel[upper_column_name] = pd.to_numeric(df_excel[upper_column_name], errors='coerce')
                                 df_excel[upper_column_name] = df_excel[upper_column_name].apply(lambda x: float(x) if pd.notna(x) else None)
                             else:
