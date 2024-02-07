@@ -32,7 +32,6 @@ for filename in os.listdir(direktori_excel):
             if table_name in inspector.get_table_names():
                 # Read existing data from the table
                 existing_data = pd.read_sql_table(table_name, con=engine)
-                print(existing_data)
 
                 # Check if any rows in the DataFrame already exist in the table
                 duplicates = df_excel[df_excel.duplicated(subset=existing_data.columns, keep='first')]

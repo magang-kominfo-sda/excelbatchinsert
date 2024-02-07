@@ -56,7 +56,6 @@ with psycopg2.connect(
                                 df_excel[upper_column_name] = df_excel[upper_column_name].astype(str).fillna('-')
                             # Tambahkan kondisi tipe data lainnya sesuai kebutuhan
                     
-                    # print(df_excel.dtypes)
 
                     select_sql = f"SELECT * FROM {table_name};"
                     cursor.execute(select_sql)
@@ -74,9 +73,11 @@ with psycopg2.connect(
                                 df_existing[upper_column_name] = df_existing[upper_column_name].astype(float)
                             else:
                                 df_existing[upper_column_name] = df_existing[upper_column_name].astype(str).fillna('-')
+                    
+                    
 
-                    # df_excel = df_excel.drop(columns=['NO'])
-                    # df_existing = df_existing.drop(columns=['NO'])
+                    df_excel = df_excel.drop(columns=['DURASI PENANGANAN'])
+                    df_existing = df_existing.drop(columns=['DURASI PENANGANAN'])
 
                     merged_data = pd.merge(df_excel, df_existing, how='outer', indicator=True)
 

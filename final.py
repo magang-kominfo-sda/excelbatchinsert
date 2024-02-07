@@ -3,10 +3,9 @@ import pandas as pd
 import psycopg2
 from psycopg2.extras import execute_batch
 
-# total_data_all_excel = 0
-# total_data_all_insert = 0
+tabel_filter_manual = "tiketdinas" # ubah menjadi "" jika tidak ingin menggunakan filter manual atau isi dengan None
+kolom_filter_manual = ['no_laporan', 'no_tiket_dinas', 'dinas', 'status', 'tiket dibuat']
 
-# Koneksi ke database PostgreSQL
 with psycopg2.connect(
     dbname='CC112',
     user='postgres',
@@ -39,9 +38,6 @@ with psycopg2.connect(
                     columns = cursor.fetchall()
                     column_mapping = {column[0]: column[1] for column in columns}
 
-                    df_columns = df_excel.columns.tolist()
-
-                    # Mengubah tipe data kolom di Excel sesuai dengan struktur tabel
                     for column_name, data_type in column_mapping.items():
                         upper_column_name = column_name.upper().replace('_', ' ')
                         if upper_column_name in df_excel.columns:
@@ -55,8 +51,6 @@ with psycopg2.connect(
                             else:
                                 df_excel[upper_column_name] = df_excel[upper_column_name].astype(str).fillna('-')
                             # Tambahkan kondisi tipe data lainnya sesuai kebutuhan
-                    
-                    # print(df_excel.dtypes)
 
                     select_sql = f"SELECT * FROM {table_name};"
                     cursor.execute(select_sql)
@@ -75,48 +69,56 @@ with psycopg2.connect(
                             else:
                                 df_existing[upper_column_name] = df_existing[upper_column_name].astype(str).fillna('-')
 
-                    df_copy = df_excel.drop(columns=['NO'])
-                    df_existing = df_existing.drop(columns=['NO'])
+                    df_excel = df_excel.drop_duplicates()
+                    df_existing = df_existing.drop_duplicates()
 
-                    merged_data = pd.merge(df_copy, df_existing, how='outer', indicator=True)
+                    df_columns = df_excel.columns.tolist()
 
-                    data_baru_tidak_ada_di_lama = merged_data.loc[merged_data['_merge'] == 'left_only', df_copy.columns]
+                    kolom_tidak_null = []
+                    
+                    for col in df_columns:
+                        if df_excel[col].apply(lambda x: pd.isnull(x) or x == 'nan').sum() == 0 and col != "NO":
+                            kolom_tidak_null.append(col)
 
-                    data_new = []
-                    nomer = 1
-                    for row in data_baru_tidak_ada_di_lama.itertuples(index=False, name=None):
-                        data_row = (nomer,) + tuple(None if pd.isnull(value) else value for value in row)
-                        data_new.append(data_row)
-                        nomer += 1
+                    if table_name == tabel_filter_manual:
+                        kolom_cek = []
+                        for teks in kolom_filter_manual:
+                            idx = teks.find("_", teks.find("_") + 1)
+                            if idx != -1:
+                                text = teks[:idx] + " " + teks[idx+1:]
+                                kolom_cek.append(text.upper())
+                            else:
+                                kolom_cek.append(teks.upper())
 
+                        df_diff = pd.concat([df_existing,df_excel]).drop_duplicates(subset=kolom_cek, keep=False)
+                    else:
+                        df_diff = pd.concat([df_existing,df_excel]).drop_duplicates(subset=kolom_tidak_null, keep=False)
+
+                    data_final = []
+                    for row in df_diff.itertuples(index=False, name=None):
+                        data_row = tuple(None if pd.isnull(value) else value for value in row)
+                        data_final.append(data_row)
+                    
                     columns = []
                     for col in df_columns:
                         if ' ' in col:
                             col = col.replace(" ", "_")
                         columns.append(col.lower())
 
-                    # print(data_ur
-
                     columns2 = ', '.join(columns)
                     placeholders = ', '.join(['%s'] * len(df_excel.columns))
                     insert_data_sql = f'INSERT INTO {table_name} ({columns2}) VALUES ({placeholders});'
 
                     total_now_data = len(df_excel)
-                    total_now_insert_data = len(data_new)
+                    total_now_insert_data = len(data_final)
 
                     try:
                         # Menjalankan SQL untuk insert data baru dalam batch
-                        execute_batch(cursor, insert_data_sql, data_new, page_size=1000)
+                        execute_batch(cursor, insert_data_sql, data_final, page_size=1000)
                         # Commitperubahan
                         conn.commit()
                         print(str(total_now_insert_data) + " Data berhasil diinsert. Total data di excel : " + str(total_now_data))
                         
                     except (Exception, psycopg2.Error) as error:
                         print("Error saat menginsert data:", error)
-                    
-
-
-# print("total semua data di excel : "+str(total_data_all_excel))
-# print("total semua data di insert : "+str(total_data_all_insert))
-
 
