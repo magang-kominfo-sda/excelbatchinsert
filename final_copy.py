@@ -27,7 +27,6 @@ with psycopg2.connect(
                 for sheet_name in sheet_names:
 
                     df_excel = pd.read_excel(file_path, sheet_name=sheet_name)
-                    print(sheet_name)
 
                     df_excel.columns = df_excel.columns.str.replace('.', '_')
                     df_excel = df_excel.map(lambda x: x.strip("'") if isinstance(x, str) else x)
@@ -39,7 +38,7 @@ with psycopg2.connect(
                     cursor.execute("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = %s)", (table_name,))
                     ada = cursor.fetchone()[0]
                     if ada:
-                        text_exist = "Table exist, "
+                        text_exist = "Table " + str(sheet_name) + " is exist, "
                     else :
                         df_cek = pd.read_excel(file_path,sheet_name=sheet_name)
 
@@ -90,7 +89,7 @@ with psycopg2.connect(
                             query += f"{kolom} {tipe_data}, "
                         query = query.rstrip(", ") + ");"  # Menghapus koma ekstra dan menambahkan tanda tutup kurung
                         cursor.execute(query)
-                        text_exist = "Table doesn't exist, Succes created tabel. "
+                        text_exist = "Table " + str(sheet_name) + " doesn't exist, Succes created tabel. "
 
                     cursor.execute(f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name}';")
                     columns = cursor.fetchall()
