@@ -1,12 +1,7 @@
 import os
 import pandas as pd
 import psycopg2
-from psycopg2.extras import execute_batch
 
-# total_data_all_excel = 0
-# total_data_all_insert = 0
-
-# Koneksi ke database PostgreSQL
 with psycopg2.connect(
     dbname='CC112NEW',
     user='postgres',
@@ -82,11 +77,4 @@ with psycopg2.connect(
                         print(duplicated_rows)
                     else:
                         print("Tidak ada baris yang sama di semua kolom.")
-
-                    
-
-
-# print("total semua data di excel : "+str(total_data_all_excel))
-# print("total semua data di insert : "+str(total_data_all_insert))
-
 

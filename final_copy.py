@@ -87,7 +87,7 @@ with psycopg2.connect(
                         query = f"CREATE TABLE IF NOT EXISTS {table_name} ("
                         for kolom, tipe_data in tipe_data_tabel.items():
                             query += f"{kolom} {tipe_data}, "
-                        query = query.rstrip(", ") + ");"  # Menghapus koma ekstra dan menambahkan tanda tutup kurung
+                        query = query.rstrip(", ") + ");"
                         cursor.execute(query)
                         text_exist = "Table " + str(sheet_name) + " doesn't exist, Succes created tabel. "
 
@@ -107,7 +107,6 @@ with psycopg2.connect(
                                 df_excel[upper_column_name] = df_excel[upper_column_name].astype(float)
                             else:
                                 df_excel[upper_column_name] = df_excel[upper_column_name].astype(str).fillna('-')
-                            # Tambahkan kondisi tipe data lainnya sesuai kebutuhan
 
                     select_sql = f"SELECT * FROM {table_name};"
                     cursor.execute(select_sql)
@@ -170,9 +169,8 @@ with psycopg2.connect(
                     total_now_insert_data = len(data_final)
 
                     try:
-                        # Menjalankan SQL untuk insert data baru dalam batch
                         execute_batch(cursor, insert_data_sql, data_final, page_size=1000)
-                        # Commitperubahan
+
                         conn.commit()
                         print(text_exist + str(total_now_insert_data) + " Data berhasil diinsert. Total data di excel : " + str(total_now_data))
                         

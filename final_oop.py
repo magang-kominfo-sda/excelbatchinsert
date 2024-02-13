@@ -84,7 +84,7 @@ class ExcelToTable:
         query = f"CREATE TABLE IF NOT EXISTS {table_name} ("
         for kolom, tipe_data in tipe_data_tabel.items():
             query += f"{kolom} {tipe_data}, "
-        query = query.rstrip(", ") + ");"  # Menghapus koma ekstra dan menambahkan tanda tutup kurung
+        query = query.rstrip(", ") + ");" 
         self.cursor.execute(query)
 
     def check_table_existence(self, table_name, file_path, sheet_name):
@@ -193,22 +193,20 @@ class ExcelToTable:
 
                     print(str(text_exist) + '. ' + str(text_insert))
 
+
 excel_to_table = ExcelToTable(dbname='CC112', 
                                 user='postgres', 
                                 password='090503', 
                                 host='localhost', 
                                 port='5432')
-
 try:
-    # Membuka koneksi ke database
     excel_to_table.connect()
 
     table_filter = "tiketdinas"
     text_filter = ['no_laporan', 'no_tiket_dinas', 'dinas', 'status', 'tiket dibuat']
 
-    # Memproses file Excel dalam direktori yang ditentukan
     excel_to_table.process_excel('perbulan2',table_filter,text_filter)
     excel_to_table.disconnect()
 except:
     print("gagal")
-    # Memutus koneksi dari database
+
