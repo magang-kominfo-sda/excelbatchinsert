@@ -12,8 +12,6 @@ class ExcelToTable:
         self.port = port
         self.conn = None
         self.cursor = None
-        self.savedcolumn = []
-        self.savedtable = None
 
     def connect(self):
         self.conn = psycopg2.connect(
@@ -38,7 +36,7 @@ class ExcelToTable:
         df_existing = pd.DataFrame(rows, columns=df.columns)
         return df_existing
 
-    def create_table(self, table_name, file_path,sheet_name, primary, foreign):
+    def create_table(self, table_name, file_path,sheet_name):
         df_cek = pd.read_excel(file_path,sheet_name=sheet_name)
 
         df_cek.columns = df_cek.columns.str.replace('.', '_')
@@ -86,21 +84,17 @@ class ExcelToTable:
         query = f"CREATE TABLE IF NOT EXISTS {table_name} ("
         for kolom, tipe_data in tipe_data_tabel.items():
             query += f"{kolom} {tipe_data}, "
-        if primary:
-            query += f"PRIMARY KEY ({primary}), "
-        if foreign:
-            query += f"FOREIGN KEY ({foreign}) REFERENCES other_table_name(other_column), "  # Adjust as needed
         query = query.rstrip(", ") + ");" 
         self.cursor.execute(query)
 
-    def check_table_existence(self, table_name, file_path, sheet_name, primary, foreign):
+    def check_table_existence(self, table_name, file_path, sheet_name):
         self.cursor.execute("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = %s)", (table_name,))
         ada = self.cursor.fetchone()[0]
         if ada:
             return "Table " + str(table_name) + " is exist"
         else :
             try:
-                self.create_table(table_name, file_path, sheet_name, primary, foreign)
+                self.create_table(table_name, file_path, sheet_name)
                 return "Table " + str(table_name) + " doesn't exist. \nSucces created Table"
             except:
                 return "Error creating table " + str(table_name)
@@ -164,20 +158,7 @@ class ExcelToTable:
         else:
             df_diff = pd.concat([df_b,df_a]).drop_duplicates(subset=kolom_tidak_null, keep=False)
             return df_diff
-    
-    def create_primary(self,df):
-        primary_key_candidates = df.columns[df.nunique() == len(df)]
-        if len(primary_key_candidates) > 0:
-            primary_key = primary_key_candidates[0]
-            return primary_key
-        else:
-            primary_key = df.columns[1]
-            return primary_key
-        
-    def create_foreign(self,df):
-        newcolumns = df.columns.tolist()
-        matching_column = next((item for item in self.savedcolumn if item in newcolumns), None)
-        return matching_column
+
 
     def process_excel(self, direktori_excel,table_filter,text_filter):
         for filename in os.listdir(direktori_excel):
@@ -187,25 +168,14 @@ class ExcelToTable:
 
                 xl = pd.ExcelFile(file_path)
                 sheet_names = xl.sheet_names
-                index = 0
                 for sheet_name in sheet_names:
-                    
                     df_excel = pd.read_excel(file_path, sheet_name=sheet_name)
                     df_excel.columns = df_excel.columns.str.replace('.', '_')
                     df_excel = df_excel.map(lambda x: x.strip("'") if isinstance(x, str) else x)
 
                     table_name = sheet_name.lower().replace(' ', '')
 
-                    primary_key = self.create_primary(df_excel)
-                    foreign_key = None
-
-                    if len(self.savedcolumn) > 0 and sheet_name != sheet_names[0]:
-                        foreign_key = self.create_foreign(df_excel)
-                    
-                    self.savedcolumn = df_excel.columns.tolist()
-
-
-                    text_exist = self.check_table_existence(table_name, file_path, sheet_name, primary_key, foreign_key)
+                    text_exist = self.check_table_existence(table_name, file_path, sheet_name)
 
                     self.cursor.execute(f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name}';")
                     columns = self.cursor.fetchall()
@@ -218,9 +188,7 @@ class ExcelToTable:
                     df_exist = self.adjust_df_type(df_exist, column_mapping)
 
                     df_final = self.concat_df(df_excel, df_exist,table_filter,text_filter,table_name)
-                    
-                    index += 1
-                    
+
                     text_insert = self.insert_data(table_name, df_final)
 
                     print(str(text_exist) + '. ' + str(text_insert))
@@ -241,4 +209,3 @@ try:
     excel_to_table.disconnect()
 except:
     print("gagal")
-
